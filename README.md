@@ -6,10 +6,10 @@ The following functions for stream conversions are defined :
 ```C++
 // (1)
 template<typename OutputIt>
-ssize_t UTF::conv_XXX_to_YYY(const char *input, size_t input_len, OutputIt output, size_t *consumed);
+UTF::RetCode UTF::conv_XXX_to_YYY(const char *input, size_t input_len, OutputIt output, size_t *consumed, size_t *written);
 
 // (2)
-ssize_t UTF::conv_XXX_to_YYY(const char *input, size_t input_len, char **output, size_t *output_size, size_t *consumed);
+UTF::RetCode UTF::conv_XXX_to_YYY(const char *input, size_t input_len, char **output, size_t *output_size, size_t *consumed, size_t *written);
 ```
 where `XXX` and `YYY` are two differents words between `utf8`, `utf16le`, `utf16be`, `utf32le` and `utf32be`.
 
@@ -21,8 +21,13 @@ where `XXX` and `YYY` are two differents words between `utf8`, `utf16le`, `utf16
 - `output_size (2)` : store the malloc-allocated memory for `*output`.
 	If `*output` is `NULL` and `*output_size` is 0, then the function will allocate a new buffer with `malloc`. 
 	If the allocated size is too small, `*output` is reallocated (`realloc`) and `*output_size` is updated.
-- `consumed` : store the number of bytes read from input. If *consumed == input_len, there were no error
-- `[return value]` : number of bytes written into the output parameter
+- `consumed` : store the number of bytes read from input. If *consumed == input_len, there was no error
+- `written` : store the number of bytes written into the output parameter
+- `[return value]` : return code
+	- `RetCode::OK` : no error
+	- `RetCode::E_INVALID` : invalid sequence encountered
+	- `RetCode::E_TRUNCATED` : truncated sequence encountered
+	- `RetCode::E_PARAMS (2)` : invalid parameters
 
 ### Examples
 ```C++
@@ -30,9 +35,9 @@ static void sample_1() {
     const char *input_utf8 = "✏ this is a useless UTF-8 string 😷";
     size_t input_utf8_len = strlen(input_utf8);
     std::vector<unsigned char> conv_utf32be;
-    size_t conv_consumed(-1);
-    UTF::conv_utf8_to_utf32be(input_utf8, input_utf8_len, std::back_inserter(conv_utf32be), &conv_consumed);
-    if (conv_consumed == input_utf8_len) {
+    size_t conv_consumed(-1), conv_written(0);
+    UTF::RetCode r = UTF::conv_utf8_to_utf32be(input_utf8, input_utf8_len, std::back_inserter(conv_utf32be), &conv_consumed, &conv_written);
+    if (r == UTF::RetCode::OK && conv_consumed == input_utf8_len) {
         for (unsigned char b : conv_utf32be) {printf("%02X", b);}
         puts("");
     }
@@ -46,10 +51,10 @@ static void sample_2() {
     size_t input_utf8_len = strlen(input_utf8);
     char *conv_utf32be = NULL;
     size_t conv_utf32be_size = 0;
-    size_t conv_consumed(-1);
-    ssize_t w = UTF::conv_utf8_to_utf32be(input_utf8, input_utf8_len, &conv_utf32be, &conv_utf32be_size, &conv_consumed);
-    if (conv_consumed == input_utf8_len && w > 0) {
-        for (size_t i = 0; i < (size_t) w; i++) {printf("%02X", (unsigned char) (conv_utf32be[i]));}
+    size_t conv_consumed(-1), conv_written(0);;
+    UTF::RetCode r = UTF::conv_utf8_to_utf32be(input_utf8, input_utf8_len, &conv_utf32be, &conv_utf32be_size, &conv_consumed, &conv_written);
+    if (r == UTF::RetCode::OK && conv_consumed == input_utf8_len) {
+        for (size_t i = 0; i < conv_written; i++) {printf("%02X", (unsigned char) (conv_utf32be[i]));}
         puts("");
     }
     else {
@@ -64,9 +69,9 @@ The following functions decode UTF sequences into codepoints stored on 32 bits i
 ```C++
 // (1)
 template<typename OutputIt>
-ssize_t UTF::decode_XXX(const char *input, size_t input_len, OutputIt output, size_t *consumed);
+UTF::RetCode UTF::decode_XXX(const char *input, size_t input_len, OutputIt output, size_t *consumed, size_t *written);
 
-ssize_t UTF::decode_XXX(const char *input, size_t input_len, uint32_t **output, size_t *output_size, size_t *consumed);
+UTF::RetCode UTF::decode_XXX(const char *input, size_t input_len, uint32_t **output, size_t *output_size, size_t *consumed, size_t *written);
 ```
 where `XXX` is a word between `utf8`, `utf16le`, `utf16be`, `utf32le` and `utf32be`.
 
@@ -78,8 +83,13 @@ where `XXX` is a word between `utf8`, `utf16le`, `utf16be`, `utf32le` and `utf32
 - `output_size (2)` : store the malloc-allocated memory for `*output`.
 	If `*output` is `NULL` and `*output_size` is 0, then the function will allocate a new buffer with `malloc`. 
 	If the allocated size is too small, `*output` is reallocated (`realloc`) and `*output_size` is updated.
-- `consumed` : store the number of bytes read from input. If *consumed == input_len, there were no error
-- `[return value]` : number of 32 bits elements written into the output parameter
+- `consumed` : store the number of bytes read from input. If *consumed == input_len, there was no error
+- `written` : store the number of 32 bits integers written into the output parameter
+- `[return value]` : return code
+	- `RetCode::OK` : no error
+	- `RetCode::E_INVALID` : invalid sequence encountered
+	- `RetCode::E_TRUNCATED` : truncated sequence encountered
+	- `RetCode::E_PARAMS (2)` : invalid parameters
 
 ### Examples
 ```C++
@@ -87,9 +97,9 @@ static void sample_1() {
     const char *input_utf8 = "✏ this is a useless UTF-8 string 😷";
     size_t input_utf8_len = strlen(input_utf8);
     std::vector<uint32_t> codepoints;
-    size_t conv_consumed(-1);
-    UTF::decode_utf8(input_utf8, input_utf8_len, std::back_inserter(codepoints), &conv_consumed);
-    if (conv_consumed == input_utf8_len) {
+    size_t conv_consumed(-1), conv_written(0);
+    UTF::RetCode r = UTF::decode_utf8(input_utf8, input_utf8_len, std::back_inserter(codepoints), &conv_consumed, &conv_written);
+    if (r == UTF::RetCode::OK && conv_consumed == input_utf8_len) {
         for (uint32_t b : codepoints) {printf("%08X", b);}
         puts("");
     }
@@ -103,10 +113,10 @@ static void sample_2() {
     size_t input_utf8_len = strlen(input_utf8);
     uint32_t *codepoints = NULL;
     size_t codepoints_size = 0;
-    size_t conv_consumed(-1);
-    ssize_t w = UTF::decode_utf8(input_utf8, input_utf8_len, &codepoints, &codepoints_size, &conv_consumed);
-    if (conv_consumed == input_utf8_len && w > 0) {
-        for (size_t i = 0; i < (size_t) w; i++) {printf("%08X", codepoints[i]);}
+    size_t conv_consumed(-1), conv_written(0);
+    UTF::RetCode r = UTF::decode_utf8(input_utf8, input_utf8_len, &codepoints, &codepoints_size, &conv_consumed, &conv_written);
+    if (r == UTF::RetCode::OK && conv_consumed == input_utf8_len) {
+        for (size_t i = 0; i < conv_written; i++) {printf("%08X", codepoints[i]);}
         puts("");
     }
     else {
@@ -121,9 +131,9 @@ The following functions encode codepoints stored on 32 bits integers into UTF st
 ```C++
 // (1)
 template<typename OutputIt>
-ssize_t UTF::encode_XXX(const uint32_t *input, size_t input_len, OutputIt output, size_t *consumed);
+UTF::RetCode UTF::encode_XXX(const uint32_t *input, size_t input_len, OutputIt output, size_t *consumed, size_t *written);
 
-ssize_t UTF::encode_XXX(const uint32_t *input, size_t input_len, char **output, size_t *output_size, size_t *consumed);
+UTF::RetCode UTF::encode_XXX(const uint32_t *input, size_t input_len, char **output, size_t *output_size, size_t *consumed, size_t *written);
 ```
 where `XXX` is a word between `utf8`, `utf16le`, `utf16be`, `utf32le` and `utf32be`.
 
@@ -135,8 +145,13 @@ where `XXX` is a word between `utf8`, `utf16le`, `utf16be`, `utf32le` and `utf32
 - `output_size (2)` : store the malloc-allocated memory for `*output`.
 	If `*output` is `NULL` and `*output_size` is 0, then the function will allocate a new buffer with `malloc`. 
 	If the allocated size is too small, `*output` is reallocated (`realloc`) and `*output_size` is updated.
-- `consumed` : store the number of 32 bits elements read from input. If *consumed == input_len, there were no error
-- `[return value]` : number of bytes written into the output parameter
+- `consumed` : store the number of 32 bits elements read from input. If *consumed == input_len, there was no error
+- `written` : store the number of bytes written into the output parameter
+- `[return value]` : return code
+	- `RetCode::OK` : no error
+	- `RetCode::E_INVALID` : invalid codepoint encountered
+	- `RetCode::E_PARAMS (2)` : invalid parameters
+
 
 ### Examples
 ```C++
@@ -148,9 +163,9 @@ static uint32_t codepoints[] =
 static void sample_1() {
     size_t codepoints_len = sizeof(codepoints) / sizeof(uint32_t);
     std::vector<unsigned char> conv_utf16le;
-    size_t conv_consumed(-1);
-    UTF::encode_utf16le(codepoints, codepoints_len, std::back_inserter(conv_utf16le), &conv_consumed);
-    if (conv_consumed == codepoints_len) {
+    size_t conv_consumed(-1), conv_written(0);
+    UTF::RetCode r = UTF::encode_utf16le(codepoints, codepoints_len, std::back_inserter(conv_utf16le), &conv_consumed, &conv_written);
+    if (r == UTF::RetCode::OK && conv_consumed == codepoints_len) {
         for (unsigned char b : conv_utf16le) {printf("%02X", b);}
         puts("");
     }
@@ -163,10 +178,10 @@ static void sample_2() {
     size_t codepoints_len = sizeof(codepoints) / sizeof(uint32_t);
     char *conv_utf16le = NULL;
     size_t conv_utf16le_size = 0;
-    size_t conv_consumed(-1);
-    ssize_t w = UTF::encode_utf16le(codepoints, codepoints_len, &conv_utf16le, &conv_utf16le_size, &conv_consumed);
-    if (conv_consumed == codepoints_len && w > 0) {
-        for (size_t i = 0; i < (size_t) w; i++) {printf("%02X", (unsigned char) (conv_utf16le[i]));}
+    size_t conv_consumed(-1), conv_written(0);
+    UTF::RetCode r = UTF::encode_utf16le(codepoints, codepoints_len, &conv_utf16le, &conv_utf16le_size, &conv_consumed, &conv_written);
+    if (r == UTF::RetCode::OK && conv_consumed == codepoints_len) {
+        for (size_t i = 0; i < conv_written; i++) {printf("%02X", (unsigned char) (conv_utf16le[i]));}
         puts("");
     }
     else {
@@ -175,3 +190,4 @@ static void sample_2() {
     free(conv_utf16le);
 }
 ```
+

@@ -21,32 +21,34 @@
 
 namespace UTF {
 
+typedef impl::RetCode RetCode;
+
 #define CHARSET_CONV_FUNC(NAME, READ, CONVERT) \
 template<typename OutputIt> \
-static inline ssize_t NAME (const char *input, size_t input_len, OutputIt output, size_t *consumed) { \
-    return impl::unicode_conv<READ, CONVERT, OutputIt>(input, input_len, output, consumed); \
+static inline RetCode NAME (const char *input, size_t input_len, OutputIt output, size_t *consumed, size_t *written) { \
+    return impl::unicode_conv<READ, CONVERT, OutputIt>(input, input_len, output, consumed, written); \
 } \
-static inline ssize_t NAME (const char *input, size_t input_len, char **output, size_t *output_size, size_t *consumed) { \
-    return impl::unicode_conv<READ, CONVERT>(input, input_len, output, output_size, consumed); \
+static inline RetCode NAME (const char *input, size_t input_len, char **output, size_t *output_size, size_t *consumed, size_t *written) { \
+    return impl::unicode_conv<READ, CONVERT>(input, input_len, output, output_size, consumed, written); \
 }
 
 #define CHARSET_DECODE_FUNC(NAME, READ) \
 template<typename OutputIt> \
-static inline ssize_t NAME (const char *input, size_t input_len, OutputIt output, size_t *consumed) { \
-    return impl::unicode_decode<READ, OutputIt>(input, input_len, output, consumed); \
+static inline RetCode NAME (const char *input, size_t input_len, OutputIt output, size_t *consumed, size_t *written) { \
+    return impl::unicode_decode<READ, OutputIt>(input, input_len, output, consumed, written); \
 } \
-static inline ssize_t NAME (const char *input, size_t input_len, uint32_t **output, size_t *output_size, size_t *consumed) { \
-    return impl::unicode_decode<READ>(input, input_len, output, output_size, consumed); \
+static inline RetCode NAME (const char *input, size_t input_len, uint32_t **output, size_t *output_size, size_t *consumed, size_t *written) { \
+    return impl::unicode_decode<READ>(input, input_len, output, output_size, consumed, written); \
 }
 
 
 #define CHARSET_ENCODE_FUNC(NAME, WRITE) \
 template<typename OutputIt> \
-static inline ssize_t NAME (const uint32_t *input, size_t input_len, OutputIt output, size_t *consumed) { \
-    return impl::unicode_encode<WRITE, OutputIt>(input, input_len, output, consumed); \
+static inline RetCode NAME (const uint32_t *input, size_t input_len, OutputIt output, size_t *consumed, size_t *written) { \
+    return impl::unicode_encode<WRITE, OutputIt>(input, input_len, output, consumed, written); \
 } \
-static inline ssize_t NAME (const uint32_t *input, size_t input_len, char **output, size_t *output_size, size_t *consumed) { \
-    return impl::unicode_encode<WRITE>(input, input_len, output, output_size, consumed); \
+static inline RetCode NAME (const uint32_t *input, size_t input_len, char **output, size_t *output_size, size_t *consumed, size_t *written) { \
+    return impl::unicode_encode<WRITE>(input, input_len, output, output_size, consumed, written); \
 }
 
 

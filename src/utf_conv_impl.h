@@ -39,14 +39,14 @@
  *
  * Based on these classes, the following templated functions are defined :
  * - stream conversion :
- *   (1) template<typename Read, typename Encode, typename OutputIt> ssize_t unicode_conv(const char *input, size_t input_len, OutputIt output, size_t *consumed)
- *   (2) template<typename Read, typename Encode> ssize_t unicode_conv(const char *input, size_t input_len, char **output, size_t *output_size, size_t *consumed)
+ *   (1) template<typename Read, typename Encode, typename OutputIt> RetCode unicode_conv(const char *input, size_t input_len, OutputIt output, size_t *consumed, size_t *written)
+ *   (2) template<typename Read, typename Encode> RetCode unicode_conv(const char *input, size_t input_len, char **output, size_t *output_size, size_t *consumed, size_t *written)
  * - stream decoding :
- *   (1) template<typename Read, typename OutputIt> ssize_t unicode_decode(const char *input, size_t input_len, OutputIt output, size_t *consumed)
- *   (2) template<typename Read> ssize_t unicode_decode(const char *input, size_t input_len, uint32_t **output, size_t *output_size, size_t *consumed)
+ *   (1) template<typename Read, typename OutputIt> RetCode unicode_decode(const char *input, size_t input_len, OutputIt output, size_t *consumed, size_t *written)
+ *   (2) template<typename Read> RetCode unicode_decode(const char *input, size_t input_len, uint32_t **output, size_t *output_size, size_t *consumed, size_t *written)
  * - stream encoding :
- *   (1) template<typename Encode, typename OutputIt> ssize_t unicode_encode(const uint32_t *input, size_t input_len, OutputIt output, size_t *consumed)
- *   (2) template<typename Encode> ssize_t unicode_encode(const uint32_t *input, size_t input_len, char **output, size_t *output_size, size_t *consumed)
+ *   (1) template<typename Encode, typename OutputIt> RetCode unicode_encode(const uint32_t *input, size_t input_len, OutputIt output, size_t *consumed, size_t *written)
+ *   (2) template<typename Encode> RetCode unicode_encode(const uint32_t *input, size_t input_len, char **output, size_t *output_size, size_t *consumed, size_t *written)
  *
  * template parameters :
  * - Read : a Read* class
@@ -60,8 +60,9 @@
  *       output : beginning of the destination range (must be an LegacyOutputIterator, like a std::back_inserter)
  *                for the stream conversions and encoding functions, output must accept char or unsigned char data
  *                for the decoding functions, output must accept uint32_t data
- *       consumed : write the number of elements read from input. If *consumed == input_len, there ware no error
- *       return : the number of elements written into output
+ *       consumed : store the number of elements read from input. If *consumed == input_len, there was no error
+ *       written : store the number of elements written into output
+ *       return : error code (OK, E_INVALID, E_TRUNCATED)
  * (2) : the output and output_size arguments of these functions have the same semantics as the output arguments of the POSIX.1-2008 getline function
  *       input : beginning of the input stream
  *       input_len : number of elements in the input stream (!= byte size)
@@ -69,8 +70,9 @@
  *       output_size : store the size of the malloc-allocated memory for *output
  *         if *output is NULL and *output_size is 0, then the function will malloc a new buffer
  *         if the malloced-size is too small, *output is reallocated and *output_size is updated
- *       consumed : write the number of elements read from input. If *consumed == input_len, there ware no error
- *       return : the number of elements written into output
+ *       consumed : store the number of elements read from input. If *consumed == input_len, there was no error
+ *       written : store the number of elements written into output
+ *       return : error code (OK, E_INVALID, E_TRUNCATED, E_PARAMS)
  */
 
 namespace UTF {
@@ -104,6 +106,13 @@ struct LittleEndian {
     static inline __attribute__((always_inline)) uint32_t to(uint32_t v) {
         return htole32(v);
     }
+};
+
+enum RetCode {
+    OK = 0,
+    E_INVALID = 1,
+    E_TRUNCATED = 2,
+    E_PARAMS = 3
 };
 
 /*
@@ -342,7 +351,8 @@ typedef CpToUtf32<BigEndian> CpToUtf32be;
  */
 template<typename Read, typename Encode, typename OutputIt>
 static inline __attribute__((always_inline))
-ssize_t unicode_conv(const char *input, size_t input_len, OutputIt output, size_t *consumed) {
+RetCode unicode_conv(const char *input, size_t input_len, OutputIt output, size_t *consumed, size_t *written) {
+    RetCode ret = RetCode::OK;
     size_t w = 0;
     if (consumed) {
         *consumed = 0;
@@ -350,16 +360,18 @@ ssize_t unicode_conv(const char *input, size_t input_len, OutputIt output, size_
     while (input_len != 0) {
         uint32_t cp;
         int removed = Read::read(input, input_len, cp);
-        if (removed <= 0) {
+        if (removed < 0) {
+            ret = RetCode::E_INVALID;
+            break;
+        }
+        if (removed == 0) {
+            ret = RetCode::E_TRUNCATED;
             break;
         }
         input += removed;
         input_len -= removed;
 
         int encoded = Encode::write(cp, output);
-        if (encoded < 1) {
-            break;
-        }
 
         if (consumed) {
             *consumed += removed;
@@ -368,7 +380,10 @@ ssize_t unicode_conv(const char *input, size_t input_len, OutputIt output, size_
         w += encoded;
     }
 
-    return w;
+    if (written) {
+        *written = w;
+    }
+    return ret;
 }
 
 /*
@@ -376,10 +391,11 @@ ssize_t unicode_conv(const char *input, size_t input_len, OutputIt output, size_
  */
 template<typename Read, typename Encode>
 static inline __attribute__((always_inline))
-ssize_t unicode_conv(const char *input, size_t input_len, char **output, size_t *output_size, size_t *consumed) {
+RetCode unicode_conv(const char *input, size_t input_len, char **output, size_t *output_size, size_t *consumed, size_t *written) {
+    RetCode ret = RetCode::OK;
     size_t w = 0;
     if (!output || !output_size) {
-        return -1;
+        return RetCode::E_PARAMS;
     }
     if (*output_size == 0) {
         *output = NULL;
@@ -390,7 +406,12 @@ ssize_t unicode_conv(const char *input, size_t input_len, char **output, size_t 
     while (input_len != 0) {
         uint32_t cp;
         int removed = Read::read(input, input_len, cp);
-        if (removed <= 0) {
+        if (removed < 0) {
+            ret = RetCode::E_INVALID;
+            break;
+        }
+        if (removed == 0) {
+            ret = RetCode::E_TRUNCATED;
             break;
         }
         input += removed;
@@ -403,9 +424,6 @@ ssize_t unicode_conv(const char *input, size_t input_len, char **output, size_t 
         }
 
         int encoded = Encode::write(cp, *output + w);
-        if (encoded < 1) {
-            break;
-        }
 
         if (consumed) {
             *consumed += removed;
@@ -414,7 +432,10 @@ ssize_t unicode_conv(const char *input, size_t input_len, char **output, size_t 
         w += encoded;
     }
 
-    return w;
+    if (written) {
+        *written = w;
+    }
+    return ret;
 }
 
 /*
@@ -423,7 +444,8 @@ ssize_t unicode_conv(const char *input, size_t input_len, char **output, size_t 
  */
 template<typename Read, typename OutputIt>
 static inline __attribute__((always_inline))
-ssize_t unicode_decode(const char *input, size_t input_len, OutputIt output, size_t *consumed) {
+RetCode unicode_decode(const char *input, size_t input_len, OutputIt output, size_t *consumed, size_t *written) {
+    RetCode ret = RetCode::OK;
     size_t w = 0;
     if (consumed) {
         *consumed = 0;
@@ -431,7 +453,12 @@ ssize_t unicode_decode(const char *input, size_t input_len, OutputIt output, siz
     while (input_len != 0) {
         uint32_t cp;
         int removed = Read::read(input, input_len, cp);
-        if (removed <= 0) {
+        if (removed < 0) {
+            ret = RetCode::E_INVALID;
+            break;
+        }
+        if (removed == 0) {
+            ret = RetCode::E_TRUNCATED;
             break;
         }
         input += removed;
@@ -446,7 +473,10 @@ ssize_t unicode_decode(const char *input, size_t input_len, OutputIt output, siz
         w += 1;
     }
 
-    return w;
+    if (written) {
+        *written = w;
+    }
+    return ret;
 }
 
 /*
@@ -454,10 +484,11 @@ ssize_t unicode_decode(const char *input, size_t input_len, OutputIt output, siz
  */
 template<typename Read>
 static inline __attribute__((always_inline))
-ssize_t unicode_decode(const char *input, size_t input_len, uint32_t **output, size_t *output_size, size_t *consumed) {
+RetCode unicode_decode(const char *input, size_t input_len, uint32_t **output, size_t *output_size, size_t *consumed, size_t *written) {
+    RetCode ret = RetCode::OK;
     size_t w = 0;
     if (!output || !output_size) {
-        return -1;
+        return RetCode::E_PARAMS;
     }
     if (*output_size == 0) {
         *output = NULL;
@@ -468,7 +499,12 @@ ssize_t unicode_decode(const char *input, size_t input_len, uint32_t **output, s
     while (input_len != 0) {
         uint32_t cp;
         int removed = Read::read(input, input_len, cp);
-        if (removed <= 0) {
+        if (removed < 0) {
+            ret = RetCode::E_INVALID;
+            break;
+        }
+        if (removed == 0) {
+            ret = RetCode::E_TRUNCATED;
             break;
         }
         input += removed;
@@ -487,7 +523,10 @@ ssize_t unicode_decode(const char *input, size_t input_len, uint32_t **output, s
         w += 1;
     }
 
-    return w;
+    if (written) {
+        *written = w;
+    }
+    return ret;
 }
 
 /*
@@ -497,7 +536,8 @@ ssize_t unicode_decode(const char *input, size_t input_len, uint32_t **output, s
  */
 template<typename Encode, typename OutputIt>
 static inline __attribute__((always_inline))
-ssize_t unicode_encode(const uint32_t *input, size_t input_len, OutputIt output, size_t *consumed) {
+RetCode unicode_encode(const uint32_t *input, size_t input_len, OutputIt output, size_t *consumed, size_t *written) {
+    RetCode ret = RetCode::OK;
     size_t w = 0;
     if (consumed) {
         *consumed = 0;
@@ -505,15 +545,13 @@ ssize_t unicode_encode(const uint32_t *input, size_t input_len, OutputIt output,
     while (input_len != 0) {
         uint32_t cp = *input;
         if ((cp >= 0xD800 && cp <= 0xDFFF) || cp > 0x10FFFF) {
+            ret = RetCode::E_INVALID;
             break;
         }
         input++;
         input_len--;
 
         int encoded = Encode::write(cp, output);
-        if (encoded < 1) {
-            break;
-        }
 
         if (consumed) {
             *consumed += 1;
@@ -522,7 +560,10 @@ ssize_t unicode_encode(const uint32_t *input, size_t input_len, OutputIt output,
         w += encoded;
     }
 
-    return w;
+    if (written) {
+        *written = w;
+    }
+    return ret;
 }
 
 /*
@@ -531,10 +572,11 @@ ssize_t unicode_encode(const uint32_t *input, size_t input_len, OutputIt output,
  */
 template<typename Encode>
 static inline __attribute__((always_inline))
-ssize_t unicode_encode(const uint32_t *input, size_t input_len, char **output, size_t *output_size, size_t *consumed) {
+RetCode unicode_encode(const uint32_t *input, size_t input_len, char **output, size_t *output_size, size_t *consumed, size_t *written) {
+    RetCode ret = RetCode::OK;
     size_t w = 0;
     if (!output || !output_size) {
-        return -1;
+        return RetCode::E_PARAMS;;
     }
     if (*output_size == 0) {
         *output = NULL;
@@ -545,6 +587,7 @@ ssize_t unicode_encode(const uint32_t *input, size_t input_len, char **output, s
     while (input_len != 0) {
         uint32_t cp = *input;
         if ((cp >= 0xD800 && cp <= 0xDFFF) || cp > 0x10FFFF) {
+            ret = RetCode::E_INVALID;
             break;
         }
         input++;
@@ -556,9 +599,6 @@ ssize_t unicode_encode(const uint32_t *input, size_t input_len, char **output, s
         }
 
         int encoded = Encode::write(cp, *output + w);
-        if (encoded < 1) {
-            break;
-        }
 
         if (consumed) {
             *consumed += 1;
@@ -567,7 +607,10 @@ ssize_t unicode_encode(const uint32_t *input, size_t input_len, char **output, s
         w += encoded;
     }
 
-    return w;
+    if (written) {
+        *written = w;
+    }
+    return ret;
 }
 
 }
