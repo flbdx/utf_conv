@@ -41,7 +41,6 @@ static inline RetCode NAME (const char *input, size_t input_len, uint32_t **outp
     return impl::unicode_decode<READ>(input, input_len, output, output_size, consumed, written); \
 }
 
-
 #define CHARSET_ENCODE_FUNC(NAME, WRITE) \
 template<typename OutputIt> \
 static inline RetCode NAME (const uint32_t *input, size_t input_len, OutputIt output, size_t *consumed, size_t *written) { \
@@ -51,6 +50,11 @@ static inline RetCode NAME (const uint32_t *input, size_t input_len, char **outp
     return impl::unicode_encode<WRITE>(input, input_len, output, output_size, consumed, written); \
 }
 
+#define CHARSET_VALIDATE(NAME, READ) \
+static inline RetCode NAME (const char *input, size_t input_len, size_t *consumed, size_t *length) { \
+    return impl::unicode_validate<READ>(input, input_len, consumed, length); \
+}
+
 
 CHARSET_CONV_FUNC(conv_utf8_to_utf16le, impl::ReadUtf8Cp, impl::CpToUtf16le)
 CHARSET_CONV_FUNC(conv_utf8_to_utf16be, impl::ReadUtf8Cp, impl::CpToUtf16be)
@@ -58,6 +62,7 @@ CHARSET_CONV_FUNC(conv_utf8_to_utf32le, impl::ReadUtf8Cp, impl::CpToUtf32le)
 CHARSET_CONV_FUNC(conv_utf8_to_utf32be, impl::ReadUtf8Cp, impl::CpToUtf32be)
 CHARSET_DECODE_FUNC(decode_utf8, impl::ReadUtf8Cp)
 CHARSET_ENCODE_FUNC(encode_utf8, impl::CpToUtf8)
+CHARSET_VALIDATE(validate_utf8, impl::ReadUtf8Cp)
 
 CHARSET_CONV_FUNC(conv_utf16le_to_utf8, impl::ReadUtf16leCp, impl::CpToUtf8)
 CHARSET_CONV_FUNC(conv_utf16le_to_utf16be, impl::ReadUtf16leCp, impl::CpToUtf16be)
@@ -65,6 +70,7 @@ CHARSET_CONV_FUNC(conv_utf16le_to_utf32le, impl::ReadUtf16leCp, impl::CpToUtf32l
 CHARSET_CONV_FUNC(conv_utf16le_to_utf32be, impl::ReadUtf16leCp, impl::CpToUtf32be)
 CHARSET_DECODE_FUNC(decode_utf16le, impl::ReadUtf16leCp)
 CHARSET_ENCODE_FUNC(encode_utf16le, impl::CpToUtf16le)
+CHARSET_VALIDATE(validate_utf16le, impl::ReadUtf16leCp)
 
 CHARSET_CONV_FUNC(conv_utf16be_to_utf16le, impl::ReadUtf16beCp, impl::CpToUtf16le)
 CHARSET_CONV_FUNC(conv_utf16be_to_utf8, impl::ReadUtf16beCp, impl::CpToUtf8)
@@ -72,6 +78,7 @@ CHARSET_CONV_FUNC(conv_utf16be_to_utf32le, impl::ReadUtf16beCp, impl::CpToUtf32l
 CHARSET_CONV_FUNC(conv_utf16be_to_utf32be, impl::ReadUtf16beCp, impl::CpToUtf32be)
 CHARSET_DECODE_FUNC(decode_utf16be, impl::ReadUtf16beCp)
 CHARSET_ENCODE_FUNC(encode_utf16be, impl::CpToUtf16be)
+CHARSET_VALIDATE(validate_utf16be, impl::ReadUtf16beCp)
 
 CHARSET_CONV_FUNC(conv_utf32le_to_utf16le, impl::ReadUtf32leCp, impl::CpToUtf16le)
 CHARSET_CONV_FUNC(conv_utf32le_to_utf16be, impl::ReadUtf32leCp, impl::CpToUtf16be)
@@ -79,6 +86,7 @@ CHARSET_CONV_FUNC(conv_utf32le_to_utf8, impl::ReadUtf32leCp, impl::CpToUtf8)
 CHARSET_CONV_FUNC(conv_utf32le_to_utf32be, impl::ReadUtf32leCp, impl::CpToUtf32be)
 CHARSET_DECODE_FUNC(decode_utf32le, impl::ReadUtf32leCp)
 CHARSET_ENCODE_FUNC(encode_utf32le, impl::CpToUtf32le)
+CHARSET_VALIDATE(validate_utf32le, impl::ReadUtf32leCp)
 
 CHARSET_CONV_FUNC(conv_utf32be_to_utf16le, impl::ReadUtf32beCp, impl::CpToUtf16le)
 CHARSET_CONV_FUNC(conv_utf32be_to_utf16be, impl::ReadUtf32beCp, impl::CpToUtf16be)
@@ -86,7 +94,9 @@ CHARSET_CONV_FUNC(conv_utf32be_to_utf32le, impl::ReadUtf32beCp, impl::CpToUtf32l
 CHARSET_CONV_FUNC(conv_utf32be_to_utf8, impl::ReadUtf32beCp, impl::CpToUtf8)
 CHARSET_DECODE_FUNC(decode_utf32be, impl::ReadUtf32beCp)
 CHARSET_ENCODE_FUNC(encode_utf32be, impl::CpToUtf32be)
+CHARSET_VALIDATE(validate_utf32be, impl::ReadUtf32beCp)
 
+#undef CHARSET_VALIDATE
 #undef CHARSET_ENCODE_FUNC
 #undef CHARSET_DECODE_FUNC
 #undef CHARSET_CONV_FUNC

@@ -330,73 +330,71 @@ static void benchmark_utf16le_utf8(const char *str_utf8, int n_runs=100) {
  * test some decoder errors
  */
 static void test_utf8_decode_errors() {
-    uint32_t *test_conv = NULL;
-    size_t test_conv_size = 0;
     UTF::RetCode r;
     size_t consumed = 0, written = 0;
 
     // truncated sequences (2 bytes)
-    r = UTF::decode_utf8("aé", 1, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf8("aé", 1, &consumed, &written);
     assert(r == UTF::RetCode::OK && consumed == 1);
-    r = UTF::decode_utf8("aé", 2, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf8("aé", 2, &consumed, &written);
     assert(r == UTF::RetCode::E_TRUNCATED && consumed == 1);
-    r = UTF::decode_utf8("aé", 3, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf8("aé", 3, &consumed, &written);
     assert(r == UTF::RetCode::OK && consumed == 3);
 
     // truncated sequences (3 bytes)
-    r = UTF::decode_utf8("a€", 1, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf8("a€", 1, &consumed, &written);
     assert(r == UTF::RetCode::OK && consumed == 1);
-    r = UTF::decode_utf8("a€", 2, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf8("a€", 2, &consumed, &written);
     assert(r == UTF::RetCode::E_TRUNCATED && consumed == 1);
-    r = UTF::decode_utf8("a€", 3, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf8("a€", 3, &consumed, &written);
     assert(r == UTF::RetCode::E_TRUNCATED && consumed == 1);
-    r = UTF::decode_utf8("a€", 4, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf8("a€", 4, &consumed, &written);
     assert(r == UTF::RetCode::OK && consumed == 4);
 
     // truncated sequences (4 bytes)
-    r = UTF::decode_utf8("a𠜎", 1, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf8("a𠜎", 1, &consumed, &written);
     assert(r == UTF::RetCode::OK && consumed == 1);
-    r = UTF::decode_utf8("a𠜎", 2, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf8("a𠜎", 2, &consumed, &written);
     assert(r == UTF::RetCode::E_TRUNCATED && consumed == 1);
-    r = UTF::decode_utf8("a𠜎", 3, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf8("a𠜎", 3, &consumed, &written);
     assert(r == UTF::RetCode::E_TRUNCATED && consumed == 1);
-    r = UTF::decode_utf8("a𠜎", 4, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf8("a𠜎", 4, &consumed, &written);
     assert(r == UTF::RetCode::E_TRUNCATED && consumed == 1);
-    r = UTF::decode_utf8("a𠜎", 5, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf8("a𠜎", 5, &consumed, &written);
     assert(r == UTF::RetCode::OK && consumed == 5);
 
     // test overlong encoding
     unsigned char encoding[4];
     encoding[0] = 0b11000000 | ('a' >> 6);
     encoding[1] = 0b10000000 | ('a' & 0b111111);
-    r = UTF::decode_utf8((const char *) encoding, 2, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf8((const char *) encoding, 2, &consumed, &written);
     assert(r == UTF::RetCode::E_INVALID && consumed == 0);
 
     encoding[0] = 0b11100000;
     encoding[1] = 0b10000000 | (('a' >> 6) & 0b111111);
     encoding[2] = 0b10000000 | ('a' & 0b111111);
-    r = UTF::decode_utf8((const char *) encoding, 3, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf8((const char *) encoding, 3, &consumed, &written);
     assert(r == UTF::RetCode::E_INVALID && consumed == 0);
 
     encoding[0] = 0b11110000;
     encoding[1] = 0b10000000;
     encoding[2] = 0b10000000 | (('a' >> 6) & 0b111111);
     encoding[3] = 0b10000000 | ('a' & 0b111111);
-    r = UTF::decode_utf8((const char *) encoding, 4, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf8((const char *) encoding, 4, &consumed, &written);
     assert(r == UTF::RetCode::E_INVALID && consumed == 0);
 
     // invalid codepoint
     encoding[0] = 0b11100000 | ((0xD8aa >> 12) & 0b1111);
     encoding[1] = 0b10000000 | ((0xD8aa >> 6) & 0b111111);
     encoding[2] = 0b10000000 | (0xD8aa & 0b111111);
-    r = UTF::decode_utf8((const char *) encoding, 3, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf8((const char *) encoding, 3, &consumed, &written);
     assert(r == UTF::RetCode::E_INVALID && consumed == 0);
 
     // invalid codepoint
     encoding[0] = 0b11100000 | ((0xDCaa >> 12) & 0b1111);
     encoding[1] = 0b10000000 | ((0xDCaa >> 6) & 0b111111);
     encoding[2] = 0b10000000 | (0xDCaa & 0b111111);
-    r = UTF::decode_utf8((const char *) encoding, 3, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf8((const char *) encoding, 3, &consumed, &written);
     assert(r == UTF::RetCode::E_INVALID && consumed == 0);
 
     // invalid codepoint
@@ -404,10 +402,8 @@ static void test_utf8_decode_errors() {
     encoding[1] = 0b10000000 | ((0x110000 >> 12) & 0b111111);;
     encoding[2] = 0b10000000 | ((0x110000 >> 6) & 0b111111);
     encoding[3] = 0b10000000 | (0x110000 & 0b111111);
-    r = UTF::decode_utf8((const char *) encoding, 4, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf8((const char *) encoding, 4, &consumed, &written);
     assert(r == UTF::RetCode::E_INVALID && consumed == 0);
-
-    free(test_conv);
 }
 
 /*
@@ -415,80 +411,72 @@ static void test_utf8_decode_errors() {
  * There is not much to test for UTF-16 as overlong encoding is not possible and illegal codepoints can't be encoded
  */
 static void test_utf16_decode_errors() {
-    uint32_t *test_conv = NULL;
-    size_t test_conv_size = 0;
     UTF::RetCode r;
     size_t consumed = 0, written = 0;
 
     const unsigned char hello_utf16le[] = {0x68, 0x00, 0xe9, 0x00, 0x6c, 0x00, 0x6c, 0x00, 0xf4, 0x00};
-    r = UTF::decode_utf16le((const char *) hello_utf16le, sizeof(hello_utf16le), &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf16le((const char *) hello_utf16le, sizeof(hello_utf16le), &consumed, &written);
     assert(r == UTF::RetCode::OK && consumed == sizeof(hello_utf16le));
     // truncated sequence
-    r = UTF::decode_utf16le((const char *) hello_utf16le, 3, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf16le((const char *) hello_utf16le, 3, &consumed, &written);
     assert(r == UTF::RetCode::E_TRUNCATED && consumed == 2);
 
     const unsigned char smileys_utf16le[] = {0x3d, 0xd8, 0x3a, 0xde, 0x3d, 0xd8, 0x26, 0xdc, 0x3d, 0xd8, 0x77, 0xdd};
-    r = UTF::decode_utf16le((const char *) smileys_utf16le, sizeof(smileys_utf16le), &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf16le((const char *) smileys_utf16le, sizeof(smileys_utf16le), &consumed, &written);
     assert(r == UTF::RetCode::OK && consumed == sizeof(smileys_utf16le));
     // truncated pair
-    r = UTF::decode_utf16le((const char *) smileys_utf16le, 1, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf16le((const char *) smileys_utf16le, 1, &consumed, &written);
     assert(r == UTF::RetCode::E_TRUNCATED && consumed == 0);
     // truncated pair
-    r = UTF::decode_utf16le((const char *) smileys_utf16le, 2, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf16le((const char *) smileys_utf16le, 2, &consumed, &written);
     assert(r == UTF::RetCode::E_TRUNCATED && consumed == 0);
     // truncated pair
-    r = UTF::decode_utf16le((const char *) smileys_utf16le, 3, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf16le((const char *) smileys_utf16le, 3, &consumed, &written);
     assert(r == UTF::RetCode::E_TRUNCATED && consumed == 0);
-    r = UTF::decode_utf16le((const char *) smileys_utf16le, 4, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf16le((const char *) smileys_utf16le, 4, &consumed, &written);
     assert(r == UTF::RetCode::OK && consumed == 4);
 
     // invalid high surrogate
-    r = UTF::decode_utf16le((const char *) smileys_utf16le + 2, sizeof(smileys_utf16le) - 2, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf16le((const char *) smileys_utf16le + 2, sizeof(smileys_utf16le) - 2, &consumed, &written);
     assert(r == UTF::RetCode::E_INVALID && consumed == 0);
 
     char encoding[4];
     *(uint16_t *)encoding = htole16(0xd83d); // valid high surrogate
     *(uint16_t *)(encoding + 2) = htole16(0xabcd); // invalid low surrogate
-    r = UTF::decode_utf16le(encoding, 4, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf16le(encoding, 4, &consumed, &written);
     assert(r == UTF::RetCode::E_INVALID && consumed == 0);
-
-    free(test_conv);
 }
 
 /*
  * test some decoder errors
  */
 static void test_utf32_decode_errors() {
-    uint32_t *test_conv = NULL;
-    size_t test_conv_size = 0;
     UTF::RetCode r;
     size_t consumed = 0, written = 0;
 
     const unsigned char smileys_utf32le[] = {0x3a, 0xf6, 0x01, 0x00, 0x26, 0xf4, 0x01, 0x00, 0x77, 0xf5, 0x01, 0x00};
-    r = UTF::decode_utf32le((const char *) smileys_utf32le, sizeof(smileys_utf32le), &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf32le((const char *) smileys_utf32le, sizeof(smileys_utf32le), &consumed, &written);
     assert(r == UTF::RetCode::OK && consumed == sizeof(smileys_utf32le));
     // truncated sequence
-    r = UTF::decode_utf32le((const char *) smileys_utf32le, 5, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf32le((const char *) smileys_utf32le, 5, &consumed, &written);
     assert(r == UTF::RetCode::E_TRUNCATED && consumed == 4);
     // truncated sequence
-    r = UTF::decode_utf32le((const char *) smileys_utf32le, 6, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf32le((const char *) smileys_utf32le, 6, &consumed, &written);
     assert(r == UTF::RetCode::E_TRUNCATED && consumed == 4);
     // truncated sequence
-    r = UTF::decode_utf32le((const char *) smileys_utf32le, 7, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf32le((const char *) smileys_utf32le, 7, &consumed, &written);
     assert(r == UTF::RetCode::E_TRUNCATED && consumed == 4);
 
     char encoding[4];
     *(uint32_t *) encoding = htole32(0xd824); // invalid codepoint
-    r = UTF::decode_utf32le(encoding, 4, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf32le(encoding, 4, &consumed, &written);
     assert(r == UTF::RetCode::E_INVALID && consumed == 0);
     *(uint32_t *) encoding = htole32(0xdc24); // invalid codepoint
-    r = UTF::decode_utf32le(encoding, 4, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf32le(encoding, 4, &consumed, &written);
     assert(r == UTF::RetCode::E_INVALID && consumed == 0);
     *(uint32_t *) encoding = htole32(0x110000); // invalid codepoint
-    r = UTF::decode_utf32le(encoding, 4, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::validate_utf32le(encoding, 4, &consumed, &written);
     assert(r == UTF::RetCode::E_INVALID && consumed == 0);
-
-    free(test_conv);
 }
 
 /*

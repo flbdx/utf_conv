@@ -47,6 +47,8 @@
  * - stream encoding :
  *   (1) template<typename Encode, typename OutputIt> RetCode unicode_encode(const uint32_t *input, size_t input_len, OutputIt output, size_t *consumed, size_t *written)
  *   (2) template<typename Encode> RetCode unicode_encode(const uint32_t *input, size_t input_len, char **output, size_t *output_size, size_t *consumed, size_t *written)
+ * - stream validation and length counting :
+ *   (3) template<typename Read> RetCode unicode_validate(const char *input, size_t input_len, size_t *consumed, size_t *length)
  *
  * template parameters :
  * - Read : a Read* class
@@ -73,6 +75,12 @@
  *       consumed : store the number of elements read from input. If *consumed == input_len, there was no error
  *       written : store the number of elements written into output
  *       return : error code (OK, E_INVALID, E_TRUNCATED, E_PARAMS)
+ * (3) :
+ *       input : beginning of the input stream
+ *       input_len : number of elements in the input stream (!= byte size)
+ *       consumed : store the number of elements read from input. If *consumed == input_len, there was no error
+ *       length : store the number of unicode characters read from the input stream
+ *       return : error code (OK, E_INVALID, E_TRUNCATED)
  */
 
 namespace UTF {
@@ -525,6 +533,44 @@ RetCode unicode_decode(const char *input, size_t input_len, uint32_t **output, s
 
     if (written) {
         *written = w;
+    }
+    return ret;
+}
+
+/*
+ * Generic UTF validator and length counter
+ */
+template<typename Read>
+static inline __attribute__((always_inline))
+RetCode unicode_validate(const char *input, size_t input_len, size_t *consumed, size_t *length) {
+    RetCode ret = RetCode::OK;
+    size_t w = 0;
+    if (consumed) {
+        *consumed = 0;
+    }
+    while (input_len != 0) {
+        uint32_t cp;
+        int removed = Read::read(input, input_len, cp);
+        if (removed < 0) {
+            ret = RetCode::E_INVALID;
+            break;
+        }
+        if (removed == 0) {
+            ret = RetCode::E_TRUNCATED;
+            break;
+        }
+        input += removed;
+        input_len -= removed;
+
+        if (consumed) {
+            *consumed += removed;
+        }
+
+        w += 1;
+    }
+
+    if (length) {
+        *length = w;
     }
     return ret;
 }
