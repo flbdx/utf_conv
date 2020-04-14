@@ -1,35 +1,84 @@
+
 # utf_conv
-A set of C++ conversion functions between the main UTF unicode encodings.
-The sources also include a wrapper for `iconv`.
-## Stream conversion functions
-The following functions for stream conversions are defined :
+
+## Overview
+
+A set of C++ utility functions for the main UTF unicode encodings. The project includes :
+- conversion functions
+- decoding functions
+- encoding functions
+- validation functions
+
+The sources also include a wrapper for `iconv` used as a reference for correctness tests.
+
+The functions cover the following UTF encodings :
+- UTF-8
+- UTF-16LE / UTF-16BE
+- UTF-32LE / UTF-32BE
+
+## Functions
+
 ```C++
+// Stream conversion functions
 // (1)
 template<typename OutputIt>
-UTF::RetCode UTF::conv_XXX_to_YYY(const char *input, size_t input_len, OutputIt output, size_t *consumed, size_t *written);
-
+UTF::RetCode UTF::conv_XXX_to_YYY(
+	const char *input, size_t input_len, OutputIt iOutput, size_t *consumed, size_t *written);
 // (2)
-UTF::RetCode UTF::conv_XXX_to_YYY(const char *input, size_t input_len, char **output, size_t *output_size, size_t *consumed, size_t *written);
+UTF::RetCode UTF::conv_XXX_to_YYY(
+	const char *input, size_t input_len, char **output, size_t *output_size, size_t *consumed, size_t *written);
+
+// Stream decoding functions
+// (3)
+template<typename OutputIt>
+UTF::RetCode UTF::decode_XXX(
+	const char *input, size_t input_len, OutputIt iOutput, size_t *consumed, size_t *written);
+// (4)
+UTF::RetCode UTF::decode_XXX(
+	const char *input, size_t input_len, uint32_t **output, size_t *output_size, size_t *consumed, size_t *written);
+
+// Codepoint encoding functions
+// (5)
+template<typename OutputIt>
+UTF::RetCode UTF::encode_XXX(
+	const uint32_t *input, size_t input_len, OutputIt iOutput, size_t *consumed, size_t *written);
+// (6)
+UTF::RetCode UTF::encode_XXX(
+	const uint32_t *input, size_t input_len, char **output, size_t *output_size, size_t *consumed, size_t *written);
+
+// Stream validation functions
+// (7)
+UTF::RetCode UTF::validate_XXX(const uint32_t *input, size_t input_len, size_t *consumed, size_t *length);
+
 ```
-where `XXX` and `YYY` are two differents words between `utf8`, `utf16le`, `utf16be`, `utf32le` and `utf32be`.
+
+where `XXX` or `YYY` are two differents words between `utf8`, `utf16le`, `utf16be`, `utf32le` and `utf32be`.
 
 ### Parameters
-- `input` :  input data
-- `input_len` : number of bytes to read from `input`
-- `output (1)`: beginning of the output range (`LegacyOutputIterator`), which must accept `char` `unsigned char` assignments.
-- `output (2)`: store the address of the beginning of the output stream `*output`
-- `output_size (2)` : store the malloc-allocated memory for `*output`.
+
+- `input` :  beginning of the input stream
+- `input_len` : number of elements (type of `input`) to read from `input`
+- `iOutput`: beginning of the output range (`LegacyOutputIterator`)
+	Depending of the operation, `iOutput` must accept either single byte assignements (stream conversion or encoding) or 32 bits interger assignements (stream decoding)
+- `output`: store the address of the beginning of the output stream `*output`
+- `output_size` : store the malloc-allocated memory for `*output`.
 	If `*output` is `NULL` and `*output_size` is 0, then the function will allocate a new buffer with `malloc`. 
 	If the allocated size is too small, `*output` is reallocated (`realloc`) and `*output_size` is updated.
 - `consumed` : store the number of bytes read from input. If *consumed == input_len, there was no error
-- `written` : store the number of bytes written into the output parameter
-- `[return value]` : return code
-	- `RetCode::OK` : no error
-	- `RetCode::E_INVALID` : invalid sequence encountered
-	- `RetCode::E_TRUNCATED` : truncated sequence encountered
-	- `RetCode::E_PARAMS (2)` : invalid parameters
+- `written` : store the number of elements (type of `output` or `iOutput`) written into the output parameter
+- `length`: store the number of unicode characters read from the input stream
 
-### Examples
+### Return value
+
+- `RetCode::OK` : no error
+- `RetCode::E_INVALID` : invalid sequence or codepoint encountered
+- `RetCode::E_TRUNCATED` : truncated sequence encountered (for stream conversions, decoding and validation)
+- `RetCode::E_PARAMS` : invalid parameters (only returned by `(2)`, `(4)` and `(6)`)
+
+## Examples
+
+### Stream conversion
+
 ```C++
 static void sample_1() {
     const char *input_utf8 = "✏ this is a useless UTF-8 string 😷";
@@ -64,34 +113,8 @@ static void sample_2() {
 }
 ```
 
-## Decoding functions
-The following functions decode UTF sequences into codepoints stored on 32 bits integers :
-```C++
-// (1)
-template<typename OutputIt>
-UTF::RetCode UTF::decode_XXX(const char *input, size_t input_len, OutputIt output, size_t *consumed, size_t *written);
+### Stream decoding
 
-UTF::RetCode UTF::decode_XXX(const char *input, size_t input_len, uint32_t **output, size_t *output_size, size_t *consumed, size_t *written);
-```
-where `XXX` is a word between `utf8`, `utf16le`, `utf16be`, `utf32le` and `utf32be`.
-
-### Parameters
-- `input` :  input data
-- `input_len` : number of bytes to read from `input`
-- `output (1)`: beginning of the output range (`LegacyOutputIterator`), which must accept `uint32_t`  (`unsigned int`) assignments.
-- `output (2)`: store the address of the beginning of the output stream `*output`
-- `output_size (2)` : store the malloc-allocated memory for `*output`.
-	If `*output` is `NULL` and `*output_size` is 0, then the function will allocate a new buffer with `malloc`. 
-	If the allocated size is too small, `*output` is reallocated (`realloc`) and `*output_size` is updated.
-- `consumed` : store the number of bytes read from input. If *consumed == input_len, there was no error
-- `written` : store the number of 32 bits integers written into the output parameter
-- `[return value]` : return code
-	- `RetCode::OK` : no error
-	- `RetCode::E_INVALID` : invalid sequence encountered
-	- `RetCode::E_TRUNCATED` : truncated sequence encountered
-	- `RetCode::E_PARAMS (2)` : invalid parameters
-
-### Examples
 ```C++
 static void sample_1() {
     const char *input_utf8 = "✏ this is a useless UTF-8 string 😷";
@@ -126,34 +149,8 @@ static void sample_2() {
 }
 ```
 
-## Encoding functions
-The following functions encode codepoints stored on 32 bits integers into UTF streams :
-```C++
-// (1)
-template<typename OutputIt>
-UTF::RetCode UTF::encode_XXX(const uint32_t *input, size_t input_len, OutputIt output, size_t *consumed, size_t *written);
+### Stream encoding
 
-UTF::RetCode UTF::encode_XXX(const uint32_t *input, size_t input_len, char **output, size_t *output_size, size_t *consumed, size_t *written);
-```
-where `XXX` is a word between `utf8`, `utf16le`, `utf16be`, `utf32le` and `utf32be`.
-
-### Parameters
-- `input` :  input data
-- `input_len` : number of 32 bits elements to read from `input`
-- `output (1)`: beginning of the output range (`LegacyOutputIterator`), which must accept `char` or `unsigned char` assignments.
-- `output (2)`: store the address of the beginning of the output stream `*output`
-- `output_size (2)` : store the malloc-allocated memory for `*output`.
-	If `*output` is `NULL` and `*output_size` is 0, then the function will allocate a new buffer with `malloc`. 
-	If the allocated size is too small, `*output` is reallocated (`realloc`) and `*output_size` is updated.
-- `consumed` : store the number of 32 bits elements read from input. If *consumed == input_len, there was no error
-- `written` : store the number of bytes written into the output parameter
-- `[return value]` : return code
-	- `RetCode::OK` : no error
-	- `RetCode::E_INVALID` : invalid codepoint encountered
-	- `RetCode::E_PARAMS (2)` : invalid parameters
-
-
-### Examples
 ```C++
 static uint32_t codepoints[] =
     {0x0000270F, 0x00000020, 0x00000074, 0x00000068, 0x00000069, 0x00000073, 0x00000020, 0x00000069, 0x00000073,
@@ -191,3 +188,19 @@ static void sample_2() {
 }
 ```
 
+### Stream validation
+
+```C++
+static void sample() {
+    const char *input_utf8 = "✏ this is a useless UTF-8 string 😷";
+    size_t input_utf8_len = strlen(input_utf8);
+    size_t conv_consumed(-1), length(0);
+    UTF::RetCode r = UTF::validate_utf8(input_utf8, input_utf8_len, &conv_consumed, &length);
+    if (r == UTF::RetCode::OK && conv_consumed == input_utf8_len) {
+        printf("the string is valid and its length is %zu characters\n", length);
+    }
+    else {
+        fprintf(stderr, "error, consumed %zu bytes out of %zu\n", conv_consumed, input_utf8_len);
+    }
+}
+```
