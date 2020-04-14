@@ -366,37 +366,37 @@ static void test_utf8_decode_errors() {
     assert(r == UTF::RetCode::OK && consumed == 5);
 
     // test overlong encoding
-    char encoding[4];
+    unsigned char encoding[4];
     encoding[0] = 0b11000000 | ('a' >> 6);
     encoding[1] = 0b10000000 | ('a' & 0b111111);
-    r = UTF::decode_utf8(encoding, 2, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::decode_utf8((const char *) encoding, 2, &test_conv, &test_conv_size, &consumed, &written);
     assert(r == UTF::RetCode::E_INVALID && consumed == 0);
 
     encoding[0] = 0b11100000;
     encoding[1] = 0b10000000 | (('a' >> 6) & 0b111111);
     encoding[2] = 0b10000000 | ('a' & 0b111111);
-    r = UTF::decode_utf8(encoding, 3, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::decode_utf8((const char *) encoding, 3, &test_conv, &test_conv_size, &consumed, &written);
     assert(r == UTF::RetCode::E_INVALID && consumed == 0);
 
     encoding[0] = 0b11110000;
     encoding[1] = 0b10000000;
     encoding[2] = 0b10000000 | (('a' >> 6) & 0b111111);
     encoding[3] = 0b10000000 | ('a' & 0b111111);
-    r = UTF::decode_utf8(encoding, 4, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::decode_utf8((const char *) encoding, 4, &test_conv, &test_conv_size, &consumed, &written);
     assert(r == UTF::RetCode::E_INVALID && consumed == 0);
 
     // invalid codepoint
     encoding[0] = 0b11100000 | ((0xD8aa >> 12) & 0b1111);
     encoding[1] = 0b10000000 | ((0xD8aa >> 6) & 0b111111);
     encoding[2] = 0b10000000 | (0xD8aa & 0b111111);
-    r = UTF::decode_utf8(encoding, 3, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::decode_utf8((const char *) encoding, 3, &test_conv, &test_conv_size, &consumed, &written);
     assert(r == UTF::RetCode::E_INVALID && consumed == 0);
 
     // invalid codepoint
     encoding[0] = 0b11100000 | ((0xDCaa >> 12) & 0b1111);
     encoding[1] = 0b10000000 | ((0xDCaa >> 6) & 0b111111);
     encoding[2] = 0b10000000 | (0xDCaa & 0b111111);
-    r = UTF::decode_utf8(encoding, 3, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::decode_utf8((const char *) encoding, 3, &test_conv, &test_conv_size, &consumed, &written);
     assert(r == UTF::RetCode::E_INVALID && consumed == 0);
 
     // invalid codepoint
@@ -404,7 +404,7 @@ static void test_utf8_decode_errors() {
     encoding[1] = 0b10000000 | ((0x110000 >> 12) & 0b111111);;
     encoding[2] = 0b10000000 | ((0x110000 >> 6) & 0b111111);
     encoding[3] = 0b10000000 | (0x110000 & 0b111111);
-    r = UTF::decode_utf8(encoding, 4, &test_conv, &test_conv_size, &consumed, &written);
+    r = UTF::decode_utf8((const char *) encoding, 4, &test_conv, &test_conv_size, &consumed, &written);
     assert(r == UTF::RetCode::E_INVALID && consumed == 0);
 
     free(test_conv);
