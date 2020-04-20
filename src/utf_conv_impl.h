@@ -64,7 +64,7 @@
  *                for the decoding functions, output must accept uint32_t data
  *       consumed : store the number of elements read from input. If *consumed == input_len, there was no error
  *       written : store the number of elements written into output
- *       return : error code (OK, E_INVALID, E_TRUNCATED)
+ *       return : error code (OK, E_INVALID, E_TRUNCATED, E_PARAMS)
  * (2) : the output and output_size arguments of these functions have the same semantics as the output arguments of the POSIX.1-2008 getline function
  *       input : beginning of the input stream
  *       input_len : number of elements in the input stream (!= byte size)
@@ -80,7 +80,7 @@
  *       input_len : number of elements in the input stream (!= byte size)
  *       consumed : store the number of elements read from input. If *consumed == input_len, there was no error
  *       length : store the number of unicode characters read from the input stream
- *       return : error code (OK, E_INVALID, E_TRUNCATED)
+ *       return : error code (OK, E_INVALID, E_TRUNCATED, E_PARAMS)
  */
 
 namespace UTF {
@@ -362,6 +362,9 @@ static inline __attribute__((always_inline))
 RetCode unicode_conv(const char *input, size_t input_len, OutputIt output, size_t *consumed, size_t *written) {
     RetCode ret = RetCode::OK;
     size_t w = 0;
+    if (!input) {
+        return RetCode::E_PARAMS;
+    }
     if (consumed) {
         *consumed = 0;
     }
@@ -402,7 +405,7 @@ static inline __attribute__((always_inline))
 RetCode unicode_conv(const char *input, size_t input_len, char **output, size_t *output_size, size_t *consumed, size_t *written) {
     RetCode ret = RetCode::OK;
     size_t w = 0;
-    if (!output || !output_size) {
+    if (!input || !output || !output_size) {
         return RetCode::E_PARAMS;
     }
     if (*output_size == 0) {
@@ -455,6 +458,9 @@ static inline __attribute__((always_inline))
 RetCode unicode_decode(const char *input, size_t input_len, OutputIt output, size_t *consumed, size_t *written) {
     RetCode ret = RetCode::OK;
     size_t w = 0;
+    if (!input) {
+        return RetCode::E_PARAMS;
+    }
     if (consumed) {
         *consumed = 0;
     }
@@ -495,7 +501,7 @@ static inline __attribute__((always_inline))
 RetCode unicode_decode(const char *input, size_t input_len, uint32_t **output, size_t *output_size, size_t *consumed, size_t *written) {
     RetCode ret = RetCode::OK;
     size_t w = 0;
-    if (!output || !output_size) {
+    if (!input || !output || !output_size) {
         return RetCode::E_PARAMS;
     }
     if (*output_size == 0) {
@@ -545,6 +551,9 @@ static inline __attribute__((always_inline))
 RetCode unicode_validate(const char *input, size_t input_len, size_t *consumed, size_t *length) {
     RetCode ret = RetCode::OK;
     size_t w = 0;
+    if (!input) {
+        return RetCode::E_PARAMS;
+    }
     if (consumed) {
         *consumed = 0;
     }
@@ -585,6 +594,9 @@ static inline __attribute__((always_inline))
 RetCode unicode_encode(const uint32_t *input, size_t input_len, OutputIt output, size_t *consumed, size_t *written) {
     RetCode ret = RetCode::OK;
     size_t w = 0;
+    if (!input) {
+        return RetCode::E_PARAMS;
+    }
     if (consumed) {
         *consumed = 0;
     }
@@ -621,7 +633,7 @@ static inline __attribute__((always_inline))
 RetCode unicode_encode(const uint32_t *input, size_t input_len, char **output, size_t *output_size, size_t *consumed, size_t *written) {
     RetCode ret = RetCode::OK;
     size_t w = 0;
-    if (!output || !output_size) {
+    if (!input || !output || !output_size) {
         return RetCode::E_PARAMS;;
     }
     if (*output_size == 0) {

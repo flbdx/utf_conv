@@ -73,7 +73,7 @@ where `XXX` or `YYY` are two differents words between `utf8`, `utf16le`, `utf16b
 - `RetCode::OK` : no error
 - `RetCode::E_INVALID` : invalid sequence or codepoint encountered
 - `RetCode::E_TRUNCATED` : truncated sequence encountered (for stream conversions, decoding and validation)
-- `RetCode::E_PARAMS` : invalid parameters (only returned by `(2)`, `(4)` and `(6)`)
+- `RetCode::E_PARAMS` : invalid parameters
 
 ## Examples
 
