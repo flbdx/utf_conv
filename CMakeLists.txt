@@ -13,7 +13,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU
 endif()
 
 set (TEST_UTF_CONV_SOURCES
-        charset_conv_iconv.h charset_conv_iconv.cpp utf_conv.h utf_conv_impl.h main_tests.cpp)
+        src/charset_conv_iconv.h src/charset_conv_iconv.cpp src/utf_conv.h src/utf_conv_impl.h src/main_tests.cpp)
 
 add_executable(test_utf_conv ${TEST_UTF_CONV_SOURCES})
 
