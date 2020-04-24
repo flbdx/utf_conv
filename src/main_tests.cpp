@@ -84,6 +84,38 @@ static bool do_test_buffer(const char *test_name, const char *func_name,
     }
 }
 
+static bool do_test_decode_one(const char *test_name, const char *func_name,
+    UTF::RetCode (*decode)(const char *, size_t, uint32_t *, size_t *),
+    const char *src, size_t src_len, const uint32_t *ref, size_t ref_len) {
+    uint32_t cp;
+    size_t consumed = 0;
+    while (src_len > 0) {
+        UTF::RetCode r = decode(src, src_len, &cp, &consumed);
+        if (r == UTF::RetCode::OK) {
+            if (ref_len > 0 && cp == *ref) {
+                // OK
+                src += consumed;
+                src_len -= consumed;
+                ref ++;
+                ref_len --;
+            }
+            else {
+                printf("[%s decode_one] %s : KO (%d)\n", test_name, func_name, r);
+                assert(ref_len > 0);
+                assert(cp == *ref);
+                return false;
+            }
+        }
+        else {
+            printf("[%s decode_one] %s : KO (%d)\n", test_name, func_name, r);
+            assert(r == UTF::RetCode::OK);
+            return false;
+        }
+    }
+    
+    return true;
+}
+
 /*
  * Run all conversions tests (valid tests)
  * str_utf8 is the source
@@ -185,6 +217,13 @@ static void do_tests(const char *test_name, const char *str_utf8) {
     do_test_buffer(test_name, "UTF-32BE -> UTF-32LE", UTF::conv_utf32be_to_utf32le, str_utf32be.data(), str_utf32be_len, str_utf32le.data(), str_utf32le_len);
     do_test_buffer(test_name, "UTF-32BE -> UNICODE", UTF::decode_utf32be, str_utf32be.data(), str_utf32be_len, (uint32_t *) unicode_ref.data(), unicode_ref_len / 4);
     do_test_buffer(test_name, "UNICODE -> UTF-32BE", UTF::encode_utf32be, (uint32_t *) unicode_ref.data(), unicode_ref_len / 4, str_utf32be.data(), str_utf32be_len);
+    
+    do_test_decode_one(test_name, "UTF-8 -> UNICODE", UTF::decode_one_utf8, str_utf8, str_utf8_len, (uint32_t *) unicode_ref.data(), unicode_ref_len / 4);
+    do_test_decode_one(test_name, "UTF-16LE -> UNICODE", UTF::decode_one_utf16le, str_utf16le.data(), str_utf16le_len, (uint32_t *) unicode_ref.data(), unicode_ref_len / 4);
+    do_test_decode_one(test_name, "UTF-16BE -> UNICODE", UTF::decode_one_utf16be, str_utf16be.data(), str_utf16be_len, (uint32_t *) unicode_ref.data(), unicode_ref_len / 4);
+    do_test_decode_one(test_name, "UTF-32LE -> UNICODE", UTF::decode_one_utf32le, str_utf32le.data(), str_utf32le_len, (uint32_t *) unicode_ref.data(), unicode_ref_len / 4);
+    do_test_decode_one(test_name, "UTF-32BE -> UNICODE", UTF::decode_one_utf32be, str_utf32be.data(), str_utf32be_len, (uint32_t *) unicode_ref.data(), unicode_ref_len / 4);
+    
 }
 
 /*

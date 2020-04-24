@@ -36,18 +36,21 @@ UTF::RetCode UTF::decode_XXX(
 // (4)
 UTF::RetCode UTF::decode_XXX(
 	const char *input, size_t input_len, uint32_t **output, size_t *output_size, size_t *consumed, size_t *written);
+// (5) read at most one unicode character from the stream
+UTF::RetCode UTF::decode_one_XXX(
+	const char *input, size_t input_len, uint32_t *cpOutput, size_t *written);
 
 // Codepoint encoding functions
-// (5)
+// (6)
 template<typename OutputIt>
 UTF::RetCode UTF::encode_XXX(
 	const uint32_t *input, size_t input_len, OutputIt iOutput, size_t *consumed, size_t *written);
-// (6)
+// (7)
 UTF::RetCode UTF::encode_XXX(
 	const uint32_t *input, size_t input_len, char **output, size_t *output_size, size_t *consumed, size_t *written);
 
 // Stream validation functions
-// (7)
+// (8)
 UTF::RetCode UTF::validate_XXX(const uint32_t *input, size_t input_len, size_t *consumed, size_t *length);
 
 ```
@@ -64,6 +67,7 @@ where `XXX` or `YYY` are two differents words between `utf8`, `utf16le`, `utf16b
 - `output_size` : store the malloc-allocated memory for `*output`.
 	If `*output` is `NULL` and `*output_size` is 0, then the function will allocate a new buffer with `malloc`. 
 	If the allocated size is too small, `*output` is reallocated (`realloc`) and `*output_size` is updated.
+- `cpOutput` : store a unique codepoint read from the stream.
 - `consumed` : store the number of bytes read from input. If *consumed == input_len, there was no error
 - `written` : store the number of elements (type of `output` or `iOutput`) written into the output parameter
 - `length`: store the number of unicode characters read from the input stream
