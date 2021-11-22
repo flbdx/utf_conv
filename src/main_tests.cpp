@@ -140,7 +140,7 @@ static void do_tests(const char *test_name, const char *str_utf8) {
     assert(consumed == str_utf8_len);
 
     // for encode/decode functions, the codepoints are the same as the UTF-32 versions in the host encoding
-#ifdef LITTLE_ENDIAN
+#if BYTE_ORDER == LITTLE_ENDIAN
     const auto &unicode_ref = str_utf32le;
     const auto &unicode_ref_len = str_utf32le_len;
 #else
